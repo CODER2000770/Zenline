@@ -1,0 +1,124 @@
+#!/bin/bash
+
+# ANSI Color Codes
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+NC='\033[0m'      # No Color
+
+BOOKMARKS_FILE="$HOME/.zline_bookmarks"
+HISTORY=()
+HISTORY_INDEX=-1
+
+# Functions (as before, with some slight modifications)
+
+list_bookmarks() {
+    echo -e "${CYAN}--- Bookmarks ---${NC}"
+    if [ -f "$BOOKMARKS_FILE" ]; then
+        cat "$BOOKMARKS_FILE"
+    else
+        echo -e "${YELLOW}No bookmarks saved yet.${NC}"
+    fi
+    echo -e "${CYAN}-------------------${NC}"
+}
+
+add_bookmark() {
+    read -p "Enter ${YELLOW}URL${NC} to bookmark: " url
+    echo "$url" >> "$BOOKMARKS_FILE"
+    echo -e "${GREEN}Bookmark added: $url${NC}"
+}
+
+goto_bookmark() {
+    if [ -f "$BOOKMARKS_FILE" ]; then
+        list_bookmarks
+        read -p "Enter the ${YELLOW}URL${NC} to go to (or press Enter to cancel): " url_to_go
+        if [ -n "$url_to_go" ]; then
+            echo -e "${GREEN}Loading: $url_to_go${NC}"
+            w3m "$url_to_go"
+            HISTORY+=("$url_to_go")
+            HISTORY_INDEX=${#HISTORY[@]} - 1
+        fi
+    else
+        echo -e "${YELLOW}No bookmarks saved yet.${NC}"
+    fi
+}
+
+load_url() {
+    url="$1"
+    echo -e "${GREEN}Loading: $url${NC}"
+    w3m "$url"
+    HISTORY+=("$url")
+    HISTORY_INDEX=${#HISTORY[@]} - 1
+}
+
+go_back() {
+    if [ "$HISTORY_INDEX" -gt 0 ]; then
+        HISTORY_INDEX=$((HISTORY_INDEX - 1))
+        echo -e "${GREEN}Going back to: ${HISTORY[$HISTORY_INDEX]}${NC}"
+        w3m "${HISTORY[$HISTORY_INDEX]}"
+    else
+        echo -e "${YELLOW}No previous page in history.${NC}"
+    fi
+}
+
+search_duckduckgo() {
+    term="$1"
+    url="https://duckduckgo.com/?q=$(echo "$term" | sed 's/ /+/g')"
+    echo -e "${GREEN}Searching DuckDuckGo for: $term${NC}"
+    w3m "$url"
+    HISTORY+=("$url")
+    HISTORY_INDEX=${#HISTORY[@]} - 1
+}
+
+search_google() {
+    term="$1"
+    url="https://www.google.com/search?q=$(echo "$term" | sed 's/ /+/g')"
+    echo -e "${GREEN}Searching Google for: $term${NC}"
+    w3m "$url"
+    HISTORY+=("$url")
+    HISTORY_INDEX=${#HISTORY[@]} - 1
+}
+
+# Main Menu with Design
+clear
+echo -e "${CYAN}  _      _      _      _"
+echo -e " |${YELLOW}Z${CYAN}____| |${YELLOW}L${CYAN}____| |${YELLOW}I${CYAN}____| |${YELLOW}N${CYAN}____|"
+echo -e " | |    | | |    | | |    | | |    |"
+echo -e " |_|____|_|_|____|_|_|____|_|_|____|"
+echo -e "${CYAN}-----------------------------${NC}"
+echo -e "${GREEN}Welcome to zline - Your Terminal Web Experience${NC}"
+echo -e "${CYAN}-----------------------------${NC}"
+echo -e " ${YELLOW}1${NC}) Go to URL"
+echo -e " ${YELLOW}2${NC}) Bookmarks"
+echo -e " ${YELLOW}3${NC}) Add Bookmark"
+echo -e " ${YELLOW}4${NC}) Back"
+echo -e " ${YELLOW}5${NC}) Search"
+echo -e " ${RED}q${NC}) Quit"
+echo -e "${CYAN}-----------------------------${NC}"
+
+read -p "Enter your choice: " choice
+
+case "$choice" in
+    1) read -p "Enter ${YELLOW}URL${NC}: " url; load_url "$url" ;;
+    2) goto_bookmark ;;
+    3) add_bookmark ;;
+    4) go_back ;;
+    5) echo "Choose search engine:"
+       echo " a) DuckDuckGo"
+       echo " b) Google"
+       read -p "Enter your choice (a/b): " search_engine
+       read -p "Enter search term: " term
+       case "$search_engine" in
+           a|A) search_duckduckgo "$term" ;;
+           b|B) search_google "$term" ;;
+           *) echo -e "${RED}Invalid search engine choice.${NC}" ;;
+       esac
+       ;;
+    q|Q) exit 0 ;;
+    *) echo -e "${RED}Invalid choice.${NC}" ;;
+esac
+
+echo -e "${CYAN}Exited.${NC}"
